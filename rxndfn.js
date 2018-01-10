@@ -25,40 +25,41 @@ class RxnDfn {
         this.D_u = 1.0;
         this.D_v = 0.5;
         this.fs = [
-            0.014,
             0.0141,
+            0.014,
             0.022,
             0.019,
             0.026,
             0.022,
             0.026,
-            0.027,
             0.038,
             0.042,
             0.058,
             0.062,
             0.0638,
+            0.058,
+            0.038,
         ]
         this.ks = [
-            0.05,
             0.0525,
+            0.05,
             0.051,
             0.0548,
             0.054,
             0.051,
             0.0565,
-            0.0615,
             0.061,
             0.059,
             0.062,
             0.061,
+            0.061,
+            0.062,
             0.061,
         ]
         this.num_phases = this.fs.length;
         this.phase_freq = 1 / this.num_phases;
 
         // Buffers
-        console.log(this.width, this.height)
         this.U = new Float64Array(this.width * this.height);
         this.U_lap = new Float64Array(this.width * this.height);
         this.V = new Float64Array(this.width * this.height);
@@ -80,7 +81,8 @@ class RxnDfn {
                     n += noise.simplex2(i * freq * this.height / 8, j * freq * this.width / 8) / freq;
                 }
                 n /= max;
-                if (n > 0.5) {
+                // these parameters are very sensitive to f and k.
+                if (n > 0.525) {
                     this.V[this.width * j + i] = (1.5 + n) / 4.;
                 } else {
                     this.V[this.width * j + i] = 0;
@@ -97,13 +99,13 @@ class RxnDfn {
     }
 
     fk(t) {
-        t = (t % (2 * PERIOD)) / PERIOD;
-        if (t >= 1) {
-            t = 2 - t
-        }
+        t = (t % PERIOD) / PERIOD;
         let t_ = this.phase_freq;
         for (let i = 0; i < this.num_phases; i++) {
             if (t_ > t)  {
+                console.log(i, 
+                    this.fs[i], 
+                    this.ks[i])
                 return [
                     this.fs[i], 
                     this.ks[i]
@@ -288,22 +290,31 @@ window.onload = function() {
         window.requestAnimationFrame(loop);
     }
 
+
+    function start(e) {
+        mousedown = true;
+        clicker(e);
+    }
+    
     function clicker(e) {
         if (mousedown) {
-            const i = Math.round(S * e.clientX / canvas.offsetWidth);
-            const j = Math.round(S * e.clientY / canvas.offsetWidth);
+            const i = Math.ceil(S * e.clientX / canvas.offsetWidth);
+            const j = Math.ceil(S * e.clientY / canvas.offsetWidth);
             reaction.drop(i, j);
         }
     }
 
-    canvas.addEventListener('mousedown', function(e) {
-        mousedown = true;
-        clicker(e);
-    });
-    canvas.addEventListener('mouseup', function() {
+    function end() {
         mousedown = false;
-    });
+    }
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('touchstart', start);
+    canvas.addEventListener('mouseup', end);
+    canvas.addEventListener('touchcancel', end);
+    canvas.addEventListener('touchend', end);
     document.addEventListener('mousemove', clicker);
+    document.addEventListener('touchmove', clicker);
 
     window.requestAnimationFrame(loop);
 }
