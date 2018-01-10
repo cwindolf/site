@@ -103,9 +103,6 @@ class RxnDfn {
         let t_ = this.phase_freq;
         for (let i = 0; i < this.num_phases; i++) {
             if (t_ > t)  {
-                console.log(i, 
-                    this.fs[i], 
-                    this.ks[i])
                 return [
                     this.fs[i], 
                     this.ks[i]
