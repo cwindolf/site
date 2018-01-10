@@ -4,12 +4,10 @@
  * Do what you like with this code.
  */
 
-
-const PERIOD = 150000;
-
-class RxnDfn {
+class GrayScottRxnDfn {
 
     constructor(canvas) {
+        // Load up canvas, set options, init drawing buffers.
         this.width = canvas.width;
         this.height = canvas.height;
         this.context = canvas.getContext('2d', { alpha: false });
@@ -21,9 +19,12 @@ class RxnDfn {
         this.id = this.context.createImageData(this.width, this.height);
         this.buffer = this.id.data;
 
-        // Behavior
+        // Diffusion rates
         this.D_u = 1.0;
         this.D_v = 0.5;
+
+        // Gray-Scott reaction parameters.
+        // We will flip between a bunch of interesting settings for fun.
         this.fs = [
             0.0141,
             0.014,
@@ -56,8 +57,11 @@ class RxnDfn {
             0.062,
             0.061,
         ]
+
+        // How simulation will move through the phases
         this.num_phases = this.fs.length;
         this.phase_freq = 1 / this.num_phases;
+        this.PERIOD = 150000;
 
         // Buffers
         this.U = new Float64Array(this.width * this.height);
@@ -65,23 +69,27 @@ class RxnDfn {
         this.V = new Float64Array(this.width * this.height);
         this.V_lap = new Float64Array(this.width * this.height);
 
+        // Some precomputations
         this.init();
     }
 
     init() {
-        // seed the state with perlin noise
+        // seed the V state with perlin noise and the U state with 1s.
         noise.seed(Math.random());
         for (let i = 0; i < this.width; i++) {
             for (let j = 0; j < this.height; j++) {
                 this.U[this.width * j + i] = 1.;
                 let n = 0, freq = 0, max = 0;
+                // fractal brownian motion
                 for (let o = 0; o < 21; o++) {
                     freq = Math.pow(2, o);
                     max += (1 / freq);
-                    n += noise.simplex2(i * freq * this.height / 8, j * freq * this.width / 8) / freq;
+                    n += noise.simplex2(
+                        i * freq * this.height / 8,
+                        j * freq * this.width / 8) / freq;
                 }
                 n /= max;
-                // these parameters are very sensitive to f and k.
+                // these parameters are very sensitive to f and k
                 if (n > 0.525) {
                     this.V[this.width * j + i] = (1.5 + n) / 4.;
                 } else {
@@ -89,7 +97,7 @@ class RxnDfn {
                 }
             }
         }
-        // init buffer to black
+        // init drawing buffer to black
         for (let idx = 0, i = 0; idx < this.buffer.length; idx += 4, i++) {
             this.buffer[idx    ] = 0;
             this.buffer[idx + 1] = 0;
@@ -98,8 +106,12 @@ class RxnDfn {
         }
     }
 
+    /* Return the f and k parameters for the current phase.
+     *
+     * @param {Number} t
+     */
     fk(t) {
-        t = (t % PERIOD) / PERIOD;
+        t = (t % this.PERIOD) / this.PERIOD;
         let t_ = this.phase_freq;
         for (let i = 0; i < this.num_phases; i++) {
             if (t_ > t)  {
@@ -112,12 +124,21 @@ class RxnDfn {
         }
     }
 
+    /* This is for interaction. Adding this to a click handler allows clicks
+     * to drop in some V chemical.
+     *
+     * @param {Integer} i
+     * @param {Integer} j
+     */
     drop(i, j) {
         this.V[this.width * j + i] = 0.75;
     }
 
-    /**
+    /* Run the simulation for one timestep with parameters f, k. We ignore the
+     * length of the timestep.
      *
+     * @param {Number} f
+     * @param {Number} k
      */
     step(f, k) {
         this.toroidalLaplacian2D(this.U, this.U_lap);
@@ -131,6 +152,9 @@ class RxnDfn {
     }
 
 
+    /* Map U and V onto colors and place them in a buffer. Then blit that buffer
+     * onto the canvas.
+     */
     draw() {
         let eu = 0, ev = 0, evu = 0;
         for (let idx = 0, i = 0; idx < this.buffer.length; idx += 4, i++) {
@@ -162,19 +186,28 @@ class RxnDfn {
          *   0.05  0.2  0.05
          */
 
-        let idx = 0,
-            u = 0, r = 0, d = 0, l = 0,
+        // idx will always equal `w * j + i`
+        let idx = 0;
+
+        // these hold the values of input at all eight neighbor positions
+        // of idx.
+        let u = 0, r = 0, d = 0, l = 0,
             ul = 0, ur = 0, bl = 0, br = 0;
 
+        // loop through by columns and then rows for caching reasons (idx ordering)
+        // cases are handled inside this giant loop rather than outside, since
+        // this seems fastest after some profiling.
         for (let j = 0; j < h; j++) {
             for (let i = 0; i < w; i++, idx++) {
 
+                // upper neighbor
                 if (j == 0) {
                     u = input[w * (h - 1) + i];
                 } else {
                     u = input[idx - w];
                 }
 
+                // upper right
                 if (j == 0) {
                     if (i == w - 1) {
                         ur = input[w * (h - 1)];
@@ -189,12 +222,14 @@ class RxnDfn {
                     }
                 }
 
+                // right
                 if (i == w - 1) {
                     r = input[w * j];
                 } else {
                     r = input[idx + 1];
                 }
 
+                // bottom right
                 if (j == h - 1) {
                     if (i == w - 1) {
                         br = input[0];
@@ -209,12 +244,14 @@ class RxnDfn {
                     }
                 }
                 
+                // down
                 if (j == h - 1) {
                     d = input[i];
                 } else {
                     d = input[idx + w];
                 }
 
+                // bottom left
                 if (j == h - 1) {
                     if (i == 0) {
                         bl = input[w - 1];
@@ -229,12 +266,14 @@ class RxnDfn {
                     }
                 }
 
+                // left
                 if (i == 0) {
                     l = input[idx + w - 1];
                 } else {
                     l = input[idx - 1];
                 }
 
+                // upper left
                 if (j == 0) {
                     if (i == 0) {
                         ul = input[w * h - 1];
@@ -249,6 +288,8 @@ class RxnDfn {
                     }
                 }
                 
+                // finally, compute this cell's portion of the convolution
+                // described above.
                 result[idx] = 0.2 * (u + r + d + l) 
                             + 0.05 * (ul + ur + bl + br) 
                             - input[idx];
@@ -257,11 +298,13 @@ class RxnDfn {
     }
 }
 
-// main
+/* main ******************************************************************** */
 window.onload = function() {
     let canvas = document.getElementById('cvs');
     let w = canvas.offsetWidth;
     let h = canvas.offsetHeight;
+    // Size of the reaction. 100 seems not too crazy for my phone so might
+    // be ok for everyone.
     let S = 100;
     if (w > h) {
         canvas.setAttribute('width', S);
@@ -270,15 +313,17 @@ window.onload = function() {
         canvas.setAttribute('height', S);
         canvas.setAttribute('width', Math.floor(S * w / h));
     }
-    let reaction = new RxnDfn(canvas);
+    let reaction = new GrayScottRxnDfn(canvas);
     let fk = reaction.fk(0);
     let mousedown = false;
+    // step a few times to clear out the noisy IC.
     reaction.step(fk[0], fk[1]);
     reaction.step(fk[0], fk[1]);
     reaction.step(fk[0], fk[1]);
     reaction.step(fk[0], fk[1]);
     reaction.step(fk[0], fk[1]);
 
+    // This is the main loop.
     function loop(t) {
         fk = reaction.fk(t);
         reaction.step(fk[0], fk[1]);
@@ -286,12 +331,11 @@ window.onload = function() {
         window.requestAnimationFrame(loop);
     }
 
-
+    // some event handlers for interaction with GrayScottRxnDfn.drop(...).
     function start(e) {
         mousedown = true;
         clicker(e);
     }
-    
     function clicker(e) {
         if (mousedown) {
             const i = Math.ceil(S * e.clientX / canvas.offsetWidth);
@@ -299,11 +343,9 @@ window.onload = function() {
             reaction.drop(i, j);
         }
     }
-
     function end() {
         mousedown = false;
     }
-
     canvas.addEventListener('mousedown', start);
     canvas.addEventListener('touchstart', start);
     canvas.addEventListener('mouseup', end);
