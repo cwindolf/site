@@ -166,9 +166,8 @@ class RxnDfn {
             u = 0, r = 0, d = 0, l = 0,
             ul = 0, ur = 0, bl = 0, br = 0;
 
-        for (let i = 0; i < w; i++) {
-            for (let j = 0; j < h; j++) {
-                idx = w * j + i;
+        for (let j = 0; j < h; j++) {
+            for (let i = 0; i < w; i++, idx++) {
 
                 if (j == 0) {
                     u = input[w * (h - 1) + i];
