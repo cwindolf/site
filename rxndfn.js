@@ -1,8 +1,8 @@
 /* If you like this, you will love
  * https://mrob.com/pub/comp/xmorphia/pearson-classes.html
  * which is an amazing site.
+ * Do what you like with this code.
  */
-
 
 
 const PERIOD = 150000;
@@ -87,15 +87,16 @@ class RxnDfn {
                 }
             }
         }
-
+        // init buffer to black
         for (let idx = 0, i = 0; idx < this.buffer.length; idx += 4, i++) {
             this.buffer[idx    ] = 0;
+            this.buffer[idx + 1] = 0;
+            this.buffer[idx + 2] = 0;
             this.buffer[idx + 3] = 255;
         }
     }
 
     fk(t) {
-        // return [this.f, this.k];
         t = (t % (2 * PERIOD)) / PERIOD;
         if (t >= 1) {
             t = 2 - t
@@ -144,13 +145,13 @@ class RxnDfn {
     }
 
     /**
-     * Get the 2D Laplacian of a `Float32Array` using a convolution, and save the
-     * result in another `Float32Array` buffer. Conv padding style is `wrap`, kind
+     * Get the 2D Laplacian of an Array-like using a convolution, and save the
+     * result in another Array-like buffer. Conv padding style is `wrap`, kind
      * of unrolled instead of actually padding.
      *
-     * @param {Float32Array} input
-     * @param {Float32Array} kernel
-     * @param {Float32Array} result
+     * @param {Array-like} input
+     * @param {Array-like} kernel
+     * @param {Array-like} result
      */
     toroidalLaplacian2D(input, result) {
         const w = this.width;
@@ -263,7 +264,7 @@ window.onload = function() {
     let canvas = document.getElementById('cvs');
     let w = canvas.offsetWidth;
     let h = canvas.offsetHeight;
-    let S = 125;
+    let S = 100;
     if (w > h) {
         canvas.setAttribute('width', S);
         canvas.setAttribute('height', Math.floor(S * h / w));
