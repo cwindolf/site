@@ -346,14 +346,15 @@ window.onload = function() {
     function end() {
         mousedown = false;
     }
-    canvas.addEventListener('mousedown', start);
-    canvas.addEventListener('touchstart', start);
-    canvas.addEventListener('mouseup', end);
-    canvas.addEventListener('touchcancel', end);
-    canvas.addEventListener('touchend', end);
+    document.addEventListener('mousedown', start);
+    document.addEventListener('touchstart', start);
+    document.addEventListener('mouseup', end);
+    document.addEventListener('touchcancel', end);
+    document.addEventListener('touchend', end);
     document.addEventListener('mousemove', clicker);
     document.addEventListener('touchmove', clicker);
 
+    // run it.
     window.requestAnimationFrame(loop);
 }
 
