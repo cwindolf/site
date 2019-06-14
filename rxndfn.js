@@ -12,9 +12,6 @@ class GrayScottRxnDfn {
         this.height = canvas.height;
         this.context = canvas.getContext('2d', { alpha: false });
         this.context.alphaEnabled = false;
-        this.context.mozImageSmoothingEnabled = false;
-        this.context.webkitImageSmoothingEnabled = false;
-        this.context.msImageSmoothingEnabled = false;
         this.context.imageSmoothingEnabled = false;
         this.id = this.context.createImageData(this.width, this.height);
         this.buffer = this.id.data;
@@ -106,7 +103,8 @@ class GrayScottRxnDfn {
         }
     }
 
-    /* Return the f and k parameters for the current phase.
+    /**
+     * Return the f and k parameters for the current phase.
      *
      * @param {Number} t
      */
@@ -124,7 +122,8 @@ class GrayScottRxnDfn {
         }
     }
 
-    /* This is for interaction. Adding this to a click handler allows clicks
+    /**
+     * This is for interaction. Adding this to a click handler allows clicks
      * to drop in some V chemical.
      *
      * @param {Integer} i
@@ -134,7 +133,8 @@ class GrayScottRxnDfn {
         this.V[this.width * j + i] = 0.75;
     }
 
-    /* Run the simulation for one timestep with parameters f, k. We ignore the
+    /**
+     * Run the simulation for one timestep with parameters f, k. We ignore the
      * length of the timestep.
      *
      * @param {Number} f
@@ -146,22 +146,26 @@ class GrayScottRxnDfn {
         let reaction_rate = 0;
         for (let idx = 0; idx < this.width * this.height; idx++) {
             reaction_rate = this.U[idx] * this.V[idx] * this.V[idx];
-            this.U[idx] = this.U[idx] + this.D_u * this.U_lap[idx] - reaction_rate + f * (1.0 - this.U[idx]);
-            this.V[idx] = this.V[idx] + this.D_v * this.V_lap[idx] + reaction_rate - (k + f) * this.V[idx];
+            this.U[idx] = this.U[idx] + this.D_u * this.U_lap[idx]
+                - reaction_rate + f * (1.0 - this.U[idx]);
+            this.V[idx] = this.V[idx] + this.D_v * this.V_lap[idx]
+                + reaction_rate - (k + f) * this.V[idx];
         }
     }
 
 
-    /* Map U and V onto colors and place them in a buffer. Then blit that buffer
+    /**
+     * Map U and V onto colors and place them in a buffer. Then blit that buffer
      * onto the canvas.
      */
     draw() {
-        let eu = 0, ev = 0, evu = 0;
+        let eu = 0, ev = 0;
         for (let idx = 0, i = 0; idx < this.buffer.length; idx += 4, i++) {
             eu = Math.exp(1.5 * (0.5 + this.U[i]));
             ev = Math.exp(5. * this.V[i]);
             this.buffer[idx + 0] = Math.floor(255 * ev / (ev + 1));
-            this.buffer[idx + 1] = Math.floor(255 * (0.5 * ev * eu / (0.5 * ev * eu + 1)));
+            this.buffer[idx + 1] = Math.floor(255 
+                * (0.5 * ev * eu / (0.5 * ev * eu + 1)));
             this.buffer[idx + 2] = Math.floor(255 * eu / (eu + 1));
         }
         this.context.putImageData(this.id, 0, 0);
@@ -199,14 +203,12 @@ class GrayScottRxnDfn {
         // this seems fastest after some profiling.
         for (let j = 0; j < h; j++) {
             for (let i = 0; i < w; i++, idx++) {
-
                 // upper neighbor
                 if (j == 0) {
                     u = input[w * (h - 1) + i];
                 } else {
                     u = input[idx - w];
                 }
-
                 // upper right
                 if (j == 0) {
                     if (i == w - 1) {
@@ -221,14 +223,12 @@ class GrayScottRxnDfn {
                         ur = input[idx - w + 1];
                     }
                 }
-
                 // right
                 if (i == w - 1) {
                     r = input[w * j];
                 } else {
                     r = input[idx + 1];
                 }
-
                 // bottom right
                 if (j == h - 1) {
                     if (i == w - 1) {
@@ -243,14 +243,12 @@ class GrayScottRxnDfn {
                         br = input[idx + w + 1];
                     }
                 }
-                
                 // down
                 if (j == h - 1) {
                     d = input[i];
                 } else {
                     d = input[idx + w];
                 }
-
                 // bottom left
                 if (j == h - 1) {
                     if (i == 0) {
@@ -265,14 +263,12 @@ class GrayScottRxnDfn {
                         bl = input[idx + w - 1];
                     }
                 }
-
                 // left
                 if (i == 0) {
                     l = input[idx + w - 1];
                 } else {
                     l = input[idx - 1];
                 }
-
                 // upper left
                 if (j == 0) {
                     if (i == 0) {
@@ -287,7 +283,6 @@ class GrayScottRxnDfn {
                         ul = input[idx - w - 1];
                     }
                 }
-                
                 // finally, compute this cell's portion of the convolution
                 // described above.
                 result[idx] = 0.2 * (u + r + d + l) 
@@ -306,16 +301,18 @@ window.onload = function() {
     // Size of the reaction. 100 seems not too crazy for my phone so might
     // be ok for everyone.
     let S = 100;
+    let ww = 0, hh = 0;
     if (w > h) {
-        canvas.setAttribute('width', S);
-        canvas.setAttribute('height', Math.floor(S * h / w));
+        ww = S;
+        hh = Math.floor(S * h / w);
     } else {
-        canvas.setAttribute('height', S);
-        canvas.setAttribute('width', Math.floor(S * w / h));
+        ww = Math.floor(S * w / h);
+        hh = S;
     }
+    canvas.setAttribute('width', ww);
+    canvas.setAttribute('height', hh);
     let reaction = new GrayScottRxnDfn(canvas);
     let fk = reaction.fk(0);
-    let mousedown = false;
     // step a few times to clear out the noisy IC.
     reaction.step(fk[0], fk[1]);
     reaction.step(fk[0], fk[1]);
@@ -332,29 +329,30 @@ window.onload = function() {
     }
 
     // some event handlers for interaction with GrayScottRxnDfn.drop(...).
+    let mousedown = false;
+    let main = document.getElementsByTagName('main')[0];
     function start(e) {
         mousedown = true;
         clicker(e);
     }
     function clicker(e) {
         if (mousedown) {
-            const i = Math.ceil(S * e.clientX / canvas.offsetWidth);
-            const j = Math.ceil(S * e.clientY / canvas.offsetWidth);
+            const i = Math.floor(ww * e.x / main.clientWidth);
+            const j = Math.floor(hh * e.y / main.clientHeight);
             reaction.drop(i, j);
         }
     }
     function end() {
         mousedown = false;
     }
-    document.addEventListener('mousedown', start);
-    document.addEventListener('touchstart', start);
-    document.addEventListener('mouseup', end);
-    document.addEventListener('touchcancel', end);
-    document.addEventListener('touchend', end);
+    main.addEventListener('mousedown', start);
+    main.addEventListener('touchstart', start, false);
+    main.addEventListener('mouseup', end);
+    main.addEventListener('touchcancel', end, false);
+    main.addEventListener('touchend', end, false);
     document.addEventListener('mousemove', clicker);
-    document.addEventListener('touchmove', clicker);
+    document.addEventListener('touchmove', clicker, false);
 
     // run it.
     window.requestAnimationFrame(loop);
 }
-
